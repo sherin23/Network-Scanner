@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# Function to display the animated banner
+display_banner() {
+  clear
+  banner="Advanced Network Scanner by Sherin Sunny"
+  for ((i = 0; i < ${#banner}; i++)); do
+    echo -n "${banner:$i:1}"
+    sleep 0.05
+  done
+  echo
+  echo "==============================================="
+}
+
+# Display the banner
+display_banner
+
+# Check if a URL was provided
+if [ -z "$1" ]; then
+  echo "Usage: $0 <url>"
+  exit 1
+fi
+
+# Set the URL
+url=$1
+
+echo "Starting nmap scans for URL: $url"
+
+# Define output file
+output_file="scan_results.txt"
+
+# Start with a header for the output file
+echo "Nmap Scan Results for URL: $url" > $output_file
+echo "===================================" >> $output_file
+
+# All ports SYN scan
+echo -e "\nAll Ports SYN Scan:" >> $output_file
+nmap -Pn -sS -p- -vv -T3 $url --min-parallelism 8 --max-retries 2 >> $output_file
+
+# Discovery scan
+echo -e "\nDiscovery Scan:" >> $output_file
+nmap -Pn -sS -p 80,443 -sV -vv --version-all --script discovery $url --min-parallelism 8 --max-retries 2 -O >> $output_file
+
+# Vulnerability scan
+echo -e "\nVulnerability Scan:" >> $output_file
+nmap -Pn -sS -p 80,443 -sV -vv --version-all --script vuln $url --min-parallelism 8 --max-retries 2 -O >> $output_file
+
+# Server version
+echo -e "\nServer Version Detection:" >> $output_file
+nmap -Pn -sS -p- -vv -T3 -sV --version-all $url >> $output_file
+
+# SSL certificate info
+echo -e "\nSSL Certificate Information:" >> $output_file
+nmap -Pn -sS -p 80,443 -vv --script ssl-cert -v $url >> $output_file
+
+# HTTP hidden page
+echo -e "\nHTTP Hidden Page Enumeration:" >> $output_file
+nmap -Pn -sS -p 80,443 --script http-enum $url >> $output_file
+
+# HTTP allowed methods
+echo -e "\nHTTP Allowed Methods:" >> $output_file
+nmap -Pn -sS -vv -p 80,443 --script http-methods $url >> $output_file
+
+# Trace Method Enabled
+echo -e "\nHTTP Trace Method Check:" >> $output_file
+nmap -Pn -sS -vv -p 80,443 --script http-trace -v $url >> $output_file
+
+# SSL/TLS misconfiguration
+echo -e "\nSSL/TLS Misconfiguration Check:" >> $output_file
+nmap -Pn -vv -sS -p 80,443 --script ssl-enum-ciphers $url >> $output_file
+
+# Host detection
+echo -e "\nHost Detection Scan:" >> $output_file
+nmap -PO -sO -vv $url >> $output_file
+
+# HSTS check
+echo -e "\nHSTS Check:" >> $output_file
+nmap -p 443 --script http-security-headers $url -vv >> $output_file
+
+# UDP scan
+echo -e "\nUDP Scan:" >> $output_file
+nmap -Pn -sU -F -T3 -vv -sV --version-all $url >> $output_file
+
+echo "Nmap scans completed for URL: $url"
